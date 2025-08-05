@@ -53,10 +53,9 @@ export function useApi() {
     })
   }
 
-  const sendInput = (id: string, input: string): Promise<{ success: boolean }> => {
-    return fetchJson(`/developers/${id}/input`, {
-      method: 'POST',
-      body: JSON.stringify({ input })
+  const activateDeveloper = (id: string): Promise<Developer> => {
+    return fetchJson(`/developers/${id}/activate`, {
+      method: 'POST'
     })
   }
 
@@ -77,7 +76,7 @@ export function useApi() {
     deleteDeveloper,
     commitChanges,
     mergePR,
-    sendInput,
+    activateDeveloper,
     getNotifications,
     markNotificationAsRead
   }

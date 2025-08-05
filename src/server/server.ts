@@ -75,14 +75,15 @@ app.post('/api/developers/:id/merge', async (req, res) => {
   }
 });
 
-app.post('/api/developers/:id/input', (req, res) => {
+app.post('/api/developers/:id/activate', async (req, res) => {
   try {
-    developerManager.sendInput(req.params.id, req.body.input);
-    res.json({ success: true });
+    const developer = await developerManager.activateDeveloper(req.params.id);
+    res.json(developer);
   } catch (error) {
     res.status(500).json({ error: (error as Error).message });
   }
 });
+
 
 app.get('/api/notifications', (req, res) => {
   res.json(notificationManager.getAllNotifications());

@@ -130,6 +130,61 @@ export class GitManager {
     }
   }
 
+  async discoverExistingWorktrees(): Promise<Array<{ branchName: string, worktreePath: string }>> {
+    const worktreesDir = path.join(this.baseDirectory, '.worktrees');
+    
+    try {
+      console.log('🔍 GitManager: Discovering existing worktrees in:', worktreesDir);
+      
+      // Check if .worktrees directory exists
+      await fs.access(worktreesDir);
+      
+      // Get list of worktree directories
+      const entries = await fs.readdir(worktreesDir, { withFileTypes: true });
+      const worktrees = [];
+      
+      for (const entry of entries) {
+        if (entry.isDirectory()) {
+          const branchName = entry.name;
+          const worktreePath = path.join(worktreesDir, branchName);
+          
+          // Verify it's actually a git worktree
+          try {
+            await execAsync('git rev-parse --git-dir', { cwd: worktreePath });
+            worktrees.push({ branchName, worktreePath });
+            console.log(`✅ GitManager: Found worktree - Branch: ${branchName}, Path: ${worktreePath}`);
+          } catch {
+            console.log(`⚠️ GitManager: Directory ${branchName} is not a valid git worktree, skipping`);
+          }
+        }
+      }
+      
+      console.log(`🔍 GitManager: Discovered ${worktrees.length} existing worktrees`);
+      return worktrees;
+      
+    } catch (error) {
+      console.log('🔍 GitManager: No existing worktrees found or .worktrees directory does not exist');
+      return [];
+    }
+  }
+
+  async getWorktreeBranchStatus(worktreePath: string): Promise<{ hasChanges: boolean, commitCount: number }> {
+    try {
+      // Check for uncommitted changes
+      const { stdout: statusOutput } = await execAsync('git status --porcelain', { cwd: worktreePath });
+      const hasChanges = statusOutput.trim().length > 0;
+      
+      // Check how many commits ahead of main
+      const { stdout: commitOutput } = await execAsync('git rev-list --count HEAD ^main', { cwd: worktreePath });
+      const commitCount = parseInt(commitOutput.trim()) || 0;
+      
+      return { hasChanges, commitCount };
+    } catch (error) {
+      console.warn(`Failed to get branch status for ${worktreePath}:`, (error as Error).message);
+      return { hasChanges: false, commitCount: 0 };
+    }
+  }
+
   private extractPRNumber(pullRequestUrl: string): string {
     const match = pullRequestUrl.match(/\/pull\/(\d+)/);
     if (!match) {

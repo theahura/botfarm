@@ -126,6 +126,7 @@ const newDeveloper = ref<CreateDeveloperRequest>({
 
 const formatStatus = (status: DeveloperStatus): string => {
   switch (status) {
+    case 'inactive': return 'Inactive'
     case 'idle': return 'Idle'
     case 'active': return 'Active'
     case 'waiting_for_input': return 'Waiting for Input'
@@ -139,7 +140,29 @@ const formatDate = (date: Date): string => {
   return new Date(date).toLocaleString()
 }
 
-const openDeveloper = (id: string) => {
+const openDeveloper = async (id: string) => {
+  const developer = developers.value.find(d => d.id === id)
+  if (!developer) return
+  
+  // If developer is inactive, activate it first
+  if (developer.status === 'inactive') {
+    try {
+      loading.value = true
+      const activatedDeveloper = await api.activateDeveloper(id)
+      // Update the developer in the list
+      const index = developers.value.findIndex(d => d.id === id)
+      if (index >= 0) {
+        developers.value[index] = activatedDeveloper
+      }
+    } catch (error) {
+      console.error('Failed to activate developer:', error)
+      alert('Failed to activate developer. Please try again.')
+      return
+    } finally {
+      loading.value = false
+    }
+  }
+  
   router.push(`/chat/${id}`)
 }
 
@@ -226,6 +249,16 @@ onMounted(async () => {
     socket.on('developer:deleted', (developerId) => {
       developers.value = developers.value.filter(d => d.id !== developerId)
     })
+
+    socket.on('developers:discovered', (discoveredDevelopers: Developer[]) => {
+      // Add discovered developers that aren't already in the list
+      for (const discovered of discoveredDevelopers) {
+        const exists = developers.value.find(d => d.id === discovered.id)
+        if (!exists) {
+          developers.value.push(discovered)
+        }
+      }
+    })
   }
 })
 </script>
@@ -306,6 +339,12 @@ onMounted(async () => {
   font-size: 0.8rem;
   font-weight: 500;
   text-transform: uppercase;
+}
+
+.status-badge.inactive {
+  background: #f8f9fa;
+  color: #6c757d;
+  border: 1px solid #dee2e6;
 }
 
 .status-badge.idle {

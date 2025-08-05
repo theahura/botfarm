@@ -4,7 +4,7 @@ import { Server } from 'socket.io';
 import { execSync } from 'child_process';
 import { GitManager } from './GitManager';
 import { NotificationManager } from './NotificationManager';
-import { Developer, DeveloperStatus, CreateDeveloperRequest, ChatMessage, SocketEvents } from '../shared/types';
+import { Developer, DeveloperStatus, CreateDeveloperRequest, SocketEvents } from '../shared/types';
 
 export class DeveloperManager {
   private developers: Map<string, Developer> = new Map();
@@ -15,6 +15,9 @@ export class DeveloperManager {
   constructor(private io: Server) {
     this.gitManager = new GitManager();
     this.notificationManager = new NotificationManager(io);
+    
+    // Discover existing worktrees on startup
+    this.discoverExistingDevelopers();
   }
 
   async createDeveloper(request: CreateDeveloperRequest): Promise<Developer> {
@@ -100,11 +103,6 @@ export class DeveloperManager {
       this.terminals.delete(developer.id);
     });
 
-    // Send initial greeting after a short delay
-    setTimeout(() => {
-      console.log(`📝 Sending initial message to Claude terminal for ${developer.name}`);
-      terminal.write('Hello! I\'m ready to help you with this project. What would you like me to work on?\n');
-    }, 2000);
 
     // Set initial status
     this.updateDeveloperStatus(developer.id, DeveloperStatus.ACTIVE);
@@ -117,21 +115,6 @@ export class DeveloperManager {
     // Emit raw terminal data to connected clients
     this.io.to(`terminal:${developerId}`).emit('terminal:data', data);
     
-    const message: ChatMessage = {
-      id: uuidv4(),
-      developerId,
-      type: 'output',
-      content: data,
-      timestamp: new Date()
-    };
-
-    console.log(`📡 Emitting chat:message to clients:`, { 
-      messageId: message.id, 
-      developerId, 
-      contentLength: data.length 
-    });
-    
-    this.io.emit('chat:message', message);
     this.updateLastActivity(developerId);
 
     if (this.isWaitingForInput(data)) {
@@ -159,26 +142,6 @@ export class DeveloperManager {
     return waitingPatterns.some(pattern => pattern.test(content));
   }
 
-  sendInput(developerId: string, input: string) {
-    const terminal = this.terminals.get(developerId);
-    if (!terminal) {
-      throw new Error('Developer terminal not found');
-    }
-
-    terminal.write(input + '\n');
-    
-    const message: ChatMessage = {
-      id: uuidv4(),
-      developerId,
-      type: 'input',
-      content: input,
-      timestamp: new Date()
-    };
-
-    this.io.emit('chat:message', message);
-    this.updateDeveloperStatus(developerId, DeveloperStatus.ACTIVE);
-    this.updateLastActivity(developerId);
-  }
 
   async commitAndCreatePR(developerId: string, commitMessage: string): Promise<string> {
     const developer = this.developers.get(developerId);
@@ -293,6 +256,68 @@ export class DeveloperManager {
     }
 
     terminal.write(data);
+  }
+
+  async discoverExistingDevelopers(): Promise<void> {
+    console.log('🔍 DeveloperManager: Starting discovery of existing developers');
+    
+    try {
+      const existingWorktrees = await this.gitManager.discoverExistingWorktrees();
+      
+      for (const { branchName, worktreePath } of existingWorktrees) {
+        // Create a unique ID for the worktree-based developer
+        const id = uuidv4();
+        
+        // Get branch status
+        const { hasChanges, commitCount } = await this.gitManager.getWorktreeBranchStatus(worktreePath);
+        
+        const developer: Developer = {
+          id,
+          name: `Developer (${branchName})`,
+          branchName,
+          workingDirectory: worktreePath,
+          status: DeveloperStatus.INACTIVE,
+          createdAt: new Date(), // We don't know the real creation date
+          lastActivity: new Date(),
+          notificationCount: 0
+        };
+
+        console.log(`🔍 DeveloperManager: Discovered inactive developer - ID: ${id}, Branch: ${branchName}`);
+        console.log(`🔍 DeveloperManager: Status - Changes: ${hasChanges}, Commits: ${commitCount}`);
+        
+        this.developers.set(id, developer);
+      }
+      
+      console.log(`✅ DeveloperManager: Discovered ${existingWorktrees.length} inactive developers`);
+      
+      // Emit discovered developers to any connected clients
+      this.io.emit('developers:discovered', Array.from(this.developers.values()));
+      
+    } catch (error) {
+      console.error('❌ DeveloperManager: Failed to discover existing developers:', error);
+    }
+  }
+
+  async activateDeveloper(developerId: string): Promise<Developer> {
+    const developer = this.developers.get(developerId);
+    if (!developer) {
+      throw new Error('Developer not found');
+    }
+
+    if (developer.status !== DeveloperStatus.INACTIVE) {
+      throw new Error('Developer is not inactive');
+    }
+
+    console.log(`🔄 DeveloperManager: Activating developer ${developer.name} (${developerId})`);
+
+    // Start the Claude terminal for this developer
+    this.startClaudeTerminal(developer);
+    
+    // Update status to active
+    this.updateDeveloperStatus(developerId, DeveloperStatus.ACTIVE);
+    
+    console.log(`✅ DeveloperManager: Developer ${developer.name} activated successfully`);
+    return developer;
   }
 
   private updateDeveloperStatus(developerId: string, status: DeveloperStatus) {

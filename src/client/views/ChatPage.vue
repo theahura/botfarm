@@ -51,52 +51,6 @@
       :developerName="developer.name" 
     />
 
-    <div class="chat-container">
-      <div class="chat-messages" ref="messagesContainer">
-        <div 
-          v-for="message in messages" 
-          :key="message.id"
-          class="message"
-          :class="message.type"
-        >
-          <div class="message-timestamp">
-            {{ formatTime(message.timestamp) }}
-          </div>
-          <div class="message-content">
-            <pre>{{ message.content }}</pre>
-          </div>
-        </div>
-        
-        <div v-if="messages.length === 0" class="empty-messages">
-          <p>No messages yet. Claude is starting up...</p>
-          <p>Messages will appear here as Claude responds.</p>
-        </div>
-      </div>
-
-      <div class="chat-input" v-if="developer?.status === 'waiting_for_input' || developer?.status === 'active'">
-        <form @submit.prevent="sendInput">
-          <div class="input-group">
-            <input 
-              v-model="inputText" 
-              type="text" 
-              :placeholder="developer?.status === 'waiting_for_input' ? 'Type your response...' : 'Send a message to Claude...'"
-              :disabled="loading"
-              ref="inputField"
-            />
-            <button type="submit" :disabled="loading || !inputText.trim()">
-              Send
-            </button>
-          </div>
-        </form>
-      </div>
-      
-      <div v-else class="chat-status">
-        <p v-if="developer?.status === 'idle'">Claude is idle</p>
-        <p v-else-if="developer?.status === 'error'">Claude encountered an error</p>
-        <p v-else-if="developer?.status === 'completed'">Claude has completed the task</p>
-      </div>
-    </div>
-
     <!-- Commit Modal -->
     <div v-if="showCommitModal" class="modal-overlay" @click="showCommitModal = false">
       <div class="modal-content" @click.stop>
@@ -130,7 +84,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, nextTick, watch } from 'vue'
+import { ref, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { useApi } from '../composables/useApi'
 import { useSocket } from '../composables/useSocket'
@@ -146,17 +100,14 @@ const developer = ref<Developer | null>(null)
 const allDevelopers = ref<Developer[]>([])
 const messages = ref<ChatMessage[]>([])
 const loading = ref(false)
-const inputText = ref('')
 const showCommitModal = ref(false)
 const commitMessage = ref('')
-
-const messagesContainer = ref<HTMLElement>()
-const inputField = ref<HTMLInputElement>()
 
 const developerId = route.params.id as string
 
 const formatStatus = (status: DeveloperStatus): string => {
   switch (status) {
+    case 'inactive': return 'Inactive'
     case 'idle': return 'Idle'
     case 'active': return 'Active'
     case 'waiting_for_input': return 'Waiting for Input'
@@ -166,32 +117,6 @@ const formatStatus = (status: DeveloperStatus): string => {
   }
 }
 
-const formatTime = (timestamp: Date): string => {
-  return new Date(timestamp).toLocaleTimeString()
-}
-
-const scrollToBottom = () => {
-  nextTick(() => {
-    if (messagesContainer.value) {
-      messagesContainer.value.scrollTop = messagesContainer.value.scrollHeight
-    }
-  })
-}
-
-const sendInput = async () => {
-  if (!inputText.value.trim() || loading.value) return
-  
-  loading.value = true
-  try {
-    await api.sendInput(developerId, inputText.value)
-    inputText.value = ''
-  } catch (error) {
-    console.error('Failed to send input:', error)
-    alert('Failed to send input. Please try again.')
-  } finally {
-    loading.value = false
-  }
-}
 
 const mergePRAndCleanup = async () => {
   if (!developer.value || !developer.value.pullRequestUrl) return
@@ -264,29 +189,6 @@ onMounted(async () => {
     socket.on('developer:deleted', (deletedId) => {
       allDevelopers.value = allDevelopers.value.filter(d => d.id !== deletedId)
     })
-
-    socket.on('chat:message', (message) => {
-      if (message.developerId === developerId) {
-        messages.value.push(message)
-        scrollToBottom()
-        
-        // Focus input field when waiting for input
-        if (message.type === 'output' && developer.value?.status === 'waiting_for_input') {
-          nextTick(() => {
-            inputField.value?.focus()
-          })
-        }
-      }
-    })
-  }
-})
-
-// Watch for status changes to focus input field
-watch(() => developer.value?.status, (newStatus) => {
-  if (newStatus === 'waiting_for_input') {
-    nextTick(() => {
-      inputField.value?.focus()
-    })
   }
 })
 </script>
@@ -355,6 +257,12 @@ watch(() => developer.value?.status, (newStatus) => {
   font-size: 0.8rem;
   font-weight: 500;
   text-transform: uppercase;
+}
+
+.status-badge.inactive {
+  background: #f8f9fa;
+  color: #6c757d;
+  border: 1px solid #dee2e6;
 }
 
 .status-badge.idle {
@@ -447,120 +355,6 @@ watch(() => developer.value?.status, (newStatus) => {
   cursor: not-allowed;
 }
 
-.chat-container {
-  flex: 1;
-  background: white;
-  border-radius: 8px;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-}
-
-.chat-messages {
-  flex: 1;
-  overflow-y: auto;
-  padding: 1rem;
-}
-
-.message {
-  margin-bottom: 1rem;
-  padding: 0.75rem;
-  border-radius: 6px;
-  border-left: 4px solid #ddd;
-}
-
-.message.input {
-  background: #e3f2fd;
-  border-left-color: #2196f3;
-}
-
-.message.output {
-  background: #f1f8e9;
-  border-left-color: #4caf50;
-}
-
-.message.error {
-  background: #ffebee;
-  border-left-color: #f44336;
-}
-
-.message.system {
-  background: #f5f5f5;
-  border-left-color: #9e9e9e;
-}
-
-.message-timestamp {
-  font-size: 0.8rem;
-  color: #666;
-  margin-bottom: 0.5rem;
-}
-
-.message-content pre {
-  margin: 0;
-  white-space: pre-wrap;
-  word-wrap: break-word;
-  font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
-  font-size: 0.9rem;
-  line-height: 1.4;
-}
-
-.empty-messages {
-  text-align: center;
-  padding: 2rem;
-  color: #666;
-}
-
-.chat-input {
-  padding: 1rem;
-  border-top: 1px solid #eee;
-}
-
-.input-group {
-  display: flex;
-  gap: 0.5rem;
-}
-
-.input-group input {
-  flex: 1;
-  padding: 0.75rem;
-  border: 1px solid #ddd;
-  border-radius: 4px;
-  font-size: 0.9rem;
-}
-
-.input-group input:focus {
-  outline: none;
-  border-color: #3498db;
-  box-shadow: 0 0 0 2px rgba(52, 152, 219, 0.2);
-}
-
-.input-group button {
-  background: #3498db;
-  color: white;
-  border: none;
-  padding: 0.75rem 1.5rem;
-  border-radius: 4px;
-  cursor: pointer;
-  font-size: 0.9rem;
-}
-
-.input-group button:hover {
-  background: #2980b9;
-}
-
-.input-group button:disabled {
-  background: #95a5a6;
-  cursor: not-allowed;
-}
-
-.chat-status {
-  padding: 1rem;
-  text-align: center;
-  color: #666;
-  border-top: 1px solid #eee;
-  background: #f8f9fa;
-}
 
 .modal-overlay {
   position: fixed;

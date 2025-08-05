@@ -11,6 +11,7 @@ export interface Developer {
 }
 
 export enum DeveloperStatus {
+  INACTIVE = 'inactive',
   IDLE = 'idle',
   ACTIVE = 'active',
   WAITING_FOR_INPUT = 'waiting_for_input',
