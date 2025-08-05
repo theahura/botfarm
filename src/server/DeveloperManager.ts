@@ -1,6 +1,7 @@
 import * as pty from 'node-pty';
 import { v4 as uuidv4 } from 'uuid';
 import { Server } from 'socket.io';
+import { execSync } from 'child_process';
 import { GitManager } from './GitManager';
 import { NotificationManager } from './NotificationManager';
 import { Developer, DeveloperStatus, CreateDeveloperRequest, ChatMessage, SocketEvents } from '../shared/types';
@@ -60,16 +61,18 @@ export class DeveloperManager {
     console.log(`Starting Claude terminal for ${developer.name} in ${developer.workingDirectory}`);
     
     // Create a PTY (pseudo-terminal) that spawns Claude
-    const terminal = pty.spawn('/home/soot/.nvm/versions/node/v22.15.0/bin/node', [
-      '/home/soot/.nvm/versions/node/v22.15.0/bin/claude'
+    const nodePath = this.getNodePath();
+    const claudePath = this.getClaudePath();
+    
+    const terminal = pty.spawn(nodePath, [
+      claudePath
     ], {
       name: 'claude-terminal',
       cols: 120,
       rows: 30,
       cwd: developer.workingDirectory,
       env: { 
-        ...process.env, 
-        PATH: '/home/soot/.nvm/versions/node/v22.15.0/bin:' + process.env.PATH,
+        ...process.env,
         HOME: process.env.HOME,
         USER: process.env.USER,
         TERM: 'xterm-256color'
@@ -307,6 +310,22 @@ export class DeveloperManager {
     if (developer) {
       developer.lastActivity = new Date();
       this.developers.set(developerId, developer);
+    }
+  }
+
+  private getNodePath(): string {
+    try {
+      return execSync('which node', { encoding: 'utf8' }).trim();
+    } catch {
+      return process.execPath;
+    }
+  }
+
+  private getClaudePath(): string {
+    try {
+      return execSync('which claude', { encoding: 'utf8' }).trim();
+    } catch {
+      throw new Error('Claude CLI not found in PATH. Please ensure Claude is installed and available.');
     }
   }
 }
