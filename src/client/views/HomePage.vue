@@ -39,6 +39,14 @@
 
         <div class="developer-actions">
           <button 
+            v-if="developer.pullRequestUrl"
+            class="btn-success btn-sm" 
+            @click.stop="mergePRAndCleanup(developer.id)"
+            :disabled="loading"
+          >
+            Merge PR
+          </button>
+          <button 
             class="btn-danger btn-sm" 
             @click.stop="deleteDeveloper(developer.id)"
             :disabled="loading"
@@ -150,6 +158,27 @@ const createDeveloper = async () => {
   } catch (error) {
     console.error('Failed to create developer:', error)
     alert('Failed to create developer. Please try again.')
+  } finally {
+    loading.value = false
+  }
+}
+
+const mergePRAndCleanup = async (id: string) => {
+  const developer = developers.value.find(d => d.id === id)
+  if (!developer) return
+  
+  if (!confirm(`Are you sure you want to merge the PR for "${developer.name}"? This will merge the PR, remove the worktree, delete the developer, and remove the git branch.`)) {
+    return
+  }
+  
+  loading.value = true
+  try {
+    await api.mergePR(id)
+    developers.value = developers.value.filter(d => d.id !== id)
+    alert('PR merged successfully and cleanup completed!')
+  } catch (error) {
+    console.error('Failed to merge PR:', error)
+    alert('Failed to merge PR. Please try again.')
   } finally {
     loading.value = false
   }
@@ -349,6 +378,26 @@ onMounted(async () => {
 
 .btn-danger:hover {
   background: #c0392b;
+}
+
+.btn-success {
+  background: #27ae60;
+  color: white;
+  border: none;
+  padding: 0.5rem 1rem;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.8rem;
+  margin-right: 0.5rem;
+}
+
+.btn-success:hover {
+  background: #229954;
+}
+
+.btn-success:disabled {
+  background: #95a5a6;
+  cursor: not-allowed;
 }
 
 .btn-danger:disabled {

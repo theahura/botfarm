@@ -47,6 +47,12 @@ export function useApi() {
     })
   }
 
+  const mergePR = (id: string): Promise<{ success: boolean }> => {
+    return fetchJson(`/developers/${id}/merge`, {
+      method: 'POST'
+    })
+  }
+
   const sendInput = (id: string, input: string): Promise<{ success: boolean }> => {
     return fetchJson(`/developers/${id}/input`, {
       method: 'POST',
@@ -70,6 +76,7 @@ export function useApi() {
     createDeveloper,
     deleteDeveloper,
     commitChanges,
+    mergePR,
     sendInput,
     getNotifications,
     markNotificationAsRead

@@ -3,6 +3,7 @@ import { createRouter, createWebHistory } from 'vue-router'
 import App from './App.vue'
 import HomePage from './views/HomePage.vue'
 import ChatPage from './views/ChatPage.vue'
+import '@xterm/xterm/css/xterm.css'
 
 const routes = [
   { path: '/', component: HomePage },

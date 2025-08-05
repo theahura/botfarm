@@ -22,6 +22,14 @@
       
       <div class="chat-actions">
         <button 
+          v-if="developer?.pullRequestUrl"
+          class="btn-merge" 
+          @click="mergePRAndCleanup"
+          :disabled="loading"
+        >
+          Merge PR & Cleanup
+        </button>
+        <button 
           class="btn-commit" 
           @click="showCommitModal = true"
           :disabled="!developer || loading"
@@ -30,6 +38,13 @@
         </button>
       </div>
     </div>
+
+    <!-- Terminal Component -->
+    <Terminal 
+      v-if="developer" 
+      :developerId="developerId" 
+      :developerName="developer.name" 
+    />
 
     <div class="chat-container">
       <div class="chat-messages" ref="messagesContainer">
@@ -48,17 +63,18 @@
         </div>
         
         <div v-if="messages.length === 0" class="empty-messages">
-          <p>No messages yet. The Claude Code session will appear here.</p>
+          <p>No messages yet. Claude is starting up...</p>
+          <p>Messages will appear here as Claude responds.</p>
         </div>
       </div>
 
-      <div class="chat-input" v-if="developer?.status === 'waiting_for_input'">
+      <div class="chat-input" v-if="developer?.status === 'waiting_for_input' || developer?.status === 'active'">
         <form @submit.prevent="sendInput">
           <div class="input-group">
             <input 
               v-model="inputText" 
               type="text" 
-              placeholder="Type your response..."
+              :placeholder="developer?.status === 'waiting_for_input' ? 'Type your response...' : 'Send a message to Claude...'"
               :disabled="loading"
               ref="inputField"
             />
@@ -70,8 +86,7 @@
       </div>
       
       <div v-else class="chat-status">
-        <p v-if="developer?.status === 'active'">Claude is processing...</p>
-        <p v-else-if="developer?.status === 'idle'">Claude is idle</p>
+        <p v-if="developer?.status === 'idle'">Claude is idle</p>
         <p v-else-if="developer?.status === 'error'">Claude encountered an error</p>
         <p v-else-if="developer?.status === 'completed'">Claude has completed the task</p>
       </div>
@@ -113,6 +128,7 @@ import { ref, onMounted, nextTick, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { useApi } from '../composables/useApi'
 import { useSocket } from '../composables/useSocket'
+import Terminal from '../components/Terminal.vue'
 import type { Developer, ChatMessage, DeveloperStatus } from '../../shared/types'
 
 const route = useRoute()
@@ -164,6 +180,27 @@ const sendInput = async () => {
   } catch (error) {
     console.error('Failed to send input:', error)
     alert('Failed to send input. Please try again.')
+  } finally {
+    loading.value = false
+  }
+}
+
+const mergePRAndCleanup = async () => {
+  if (!developer.value || !developer.value.pullRequestUrl) return
+  
+  if (!confirm(`Are you sure you want to merge the PR for "${developer.value.name}"? This will merge the PR, remove the worktree, delete the developer, and remove the git branch. You will be redirected to the home page.`)) {
+    return
+  }
+  
+  loading.value = true
+  try {
+    await api.mergePR(developerId)
+    alert('PR merged successfully and cleanup completed!')
+    // Redirect to home page since developer is deleted
+    window.location.href = '/'
+  } catch (error) {
+    console.error('Failed to merge PR:', error)
+    alert('Failed to merge PR. Please try again.')
   } finally {
     loading.value = false
   }
@@ -351,6 +388,27 @@ watch(() => developer.value?.status, (newStatus) => {
 
 .btn-commit:hover {
   background: #219a52;
+}
+
+.btn-merge {
+  background: #27ae60;
+  color: white;
+  border: none;
+  padding: 0.75rem 1.5rem;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  transition: background-color 0.2s;
+  margin-right: 1rem;
+}
+
+.btn-merge:hover {
+  background: #229954;
+}
+
+.btn-merge:disabled {
+  background: #95a5a6;
+  cursor: not-allowed;
 }
 
 .btn-commit:disabled {
