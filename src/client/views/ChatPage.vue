@@ -1,6 +1,11 @@
 <template>
   <div class="chat-page">
-    <div class="chat-header">
+    <DeveloperSidebar 
+      :developers="allDevelopers" 
+      :currentDeveloperId="developerId" 
+    />
+    <div class="chat-main">
+      <div class="chat-header">
       <div class="developer-info">
         <button class="back-btn" @click="$router.push('/')">← Back</button>
         <div v-if="developer">
@@ -120,6 +125,7 @@
         </form>
       </div>
     </div>
+    </div>
   </div>
 </template>
 
@@ -129,6 +135,7 @@ import { useRoute } from 'vue-router'
 import { useApi } from '../composables/useApi'
 import { useSocket } from '../composables/useSocket'
 import Terminal from '../components/Terminal.vue'
+import DeveloperSidebar from '../components/DeveloperSidebar.vue'
 import type { Developer, ChatMessage, DeveloperStatus } from '../../shared/types'
 
 const route = useRoute()
@@ -136,6 +143,7 @@ const api = useApi()
 const { socket } = useSocket()
 
 const developer = ref<Developer | null>(null)
+const allDevelopers = ref<Developer[]>([])
 const messages = ref<ChatMessage[]>([])
 const loading = ref(false)
 const inputText = ref('')
@@ -229,6 +237,7 @@ const commitChanges = async () => {
 onMounted(async () => {
   try {
     developer.value = await api.getDeveloper(developerId)
+    allDevelopers.value = await api.getDevelopers()
   } catch (error) {
     console.error('Failed to load developer:', error)
   }
@@ -238,6 +247,22 @@ onMounted(async () => {
       if (updatedDeveloper.id === developerId) {
         developer.value = updatedDeveloper
       }
+      // Update the developer in the sidebar list
+      const index = allDevelopers.value.findIndex(d => d.id === updatedDeveloper.id)
+      if (index >= 0) {
+        allDevelopers.value[index] = updatedDeveloper
+      }
+    })
+
+    socket.on('developer:created', (newDeveloper) => {
+      const exists = allDevelopers.value.find(d => d.id === newDeveloper.id)
+      if (!exists) {
+        allDevelopers.value.push(newDeveloper)
+      }
+    })
+
+    socket.on('developer:deleted', (deletedId) => {
+      allDevelopers.value = allDevelopers.value.filter(d => d.id !== deletedId)
     })
 
     socket.on('chat:message', (message) => {
@@ -270,9 +295,15 @@ watch(() => developer.value?.status, (newStatus) => {
 .chat-page {
   height: calc(100vh - 140px);
   display: flex;
-  flex-direction: column;
   max-width: 1200px;
   margin: 0 auto;
+}
+
+.chat-main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
 }
 
 .chat-header {
