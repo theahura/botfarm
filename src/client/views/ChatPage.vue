@@ -85,7 +85,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { useApi } from '../composables/useApi'
 import { useSocket } from '../composables/useSocket'
@@ -104,7 +104,16 @@ const loading = ref(false)
 const showCommitModal = ref(false)
 const commitMessage = ref('')
 
-const developerId = route.params.id as string
+const developerId = ref(route.params.id as string)
+
+const loadDeveloperData = async (id: string) => {
+  try {
+    developer.value = await api.getDeveloper(id)
+    allDevelopers.value = await api.getDevelopers()
+  } catch (error) {
+    console.error('Failed to load developer:', error)
+  }
+}
 
 const formatStatus = (status: DeveloperStatus): string => {
   switch (status) {
@@ -128,7 +137,7 @@ const mergePRAndCleanup = async () => {
   
   loading.value = true
   try {
-    await api.mergePR(developerId)
+    await api.mergePR(developerId.value)
     alert('PR merged successfully and cleanup completed!')
     // Redirect to home page since developer is deleted
     window.location.href = '/'
@@ -145,7 +154,7 @@ const commitChanges = async () => {
   
   loading.value = true
   try {
-    const result = await api.commitChanges(developerId, commitMessage.value)
+    const result = await api.commitChanges(developerId.value, commitMessage.value)
     if (developer.value) {
       developer.value.pullRequestUrl = result.pullRequestUrl
     }
@@ -167,17 +176,20 @@ const handleDeveloperCreated = (newDeveloper: Developer) => {
   }
 }
 
-onMounted(async () => {
-  try {
-    developer.value = await api.getDeveloper(developerId)
-    allDevelopers.value = await api.getDevelopers()
-  } catch (error) {
-    console.error('Failed to load developer:', error)
+// Watch for route parameter changes to reload data
+watch(() => route.params.id, (newId) => {
+  if (newId) {
+    developerId.value = newId as string
+    loadDeveloperData(developerId.value)
   }
+})
+
+onMounted(async () => {
+  await loadDeveloperData(developerId.value)
 
   if (socket) {
     socket.on('developer:updated', (updatedDeveloper) => {
-      if (updatedDeveloper.id === developerId) {
+      if (updatedDeveloper.id === developerId.value) {
         developer.value = updatedDeveloper
       }
       // Update the developer in the sidebar list
