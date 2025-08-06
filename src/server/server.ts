@@ -117,6 +117,13 @@ io.on('connection', (socket) => {
       // Join a room for this developer's terminal
       socket.join(`terminal:${developerId}`);
       console.log(`✅ Client ${socket.id} joined terminal room for developer ${developerId}`);
+      
+      // Send terminal history to the newly connected client
+      const history = developerManager.getTerminalHistory(developerId);
+      if (history) {
+        socket.emit('terminal:history', history);
+        console.log(`📜 Sent terminal history to client ${socket.id} (${history.length} characters)`);
+      }
     } else {
       socket.emit('terminal:error', `Terminal not found for developer ${developerId}`);
     }

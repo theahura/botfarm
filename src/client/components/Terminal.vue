@@ -85,6 +85,12 @@ const initializeTerminal = () => {
   if (socket) {
     socket.emit('terminal:connect', props.developerId)
     
+    socket.on('terminal:history', (history) => {
+      if (terminal && history) {
+        terminal.write(history)
+      }
+    })
+    
     socket.on('terminal:data', (data) => {
       if (terminal) {
         terminal.write(data)
@@ -112,6 +118,7 @@ const initializeTerminal = () => {
     window.removeEventListener('resize', handleResize)
     if (socket) {
       socket.emit('terminal:disconnect', props.developerId)
+      socket.off('terminal:history')
       socket.off('terminal:data')
       socket.off('terminal:error')
     }
