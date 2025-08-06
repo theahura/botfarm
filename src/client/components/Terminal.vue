@@ -17,7 +17,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, nextTick } from 'vue'
+import { ref, onMounted, onUnmounted, nextTick, watch } from 'vue'
 import { Terminal } from '@xterm/xterm'
 import { FitAddon } from '@xterm/addon-fit'
 import { useSocket } from '../composables/useSocket'
@@ -156,6 +156,22 @@ onMounted(() => {
 onUnmounted(() => {
   if (cleanup) {
     cleanup()
+  }
+})
+
+// Watch for developerId changes and reconnect terminal
+watch(() => props.developerId, (newDeveloperId, oldDeveloperId) => {
+  if (newDeveloperId !== oldDeveloperId && terminal && socket) {
+    // Disconnect from old developer
+    if (oldDeveloperId) {
+      socket.emit('terminal:disconnect', oldDeveloperId)
+    }
+    
+    // Clear terminal display
+    terminal.clear()
+    
+    // Connect to new developer
+    socket.emit('terminal:connect', newDeveloperId)
   }
 })
 </script>
