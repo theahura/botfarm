@@ -40,7 +40,7 @@ export interface CommitRequest {
 export interface Notification {
   id: string;
   developerId: string;
-  type: 'ready_for_review' | 'error' | 'waiting_for_input' | 'pr_created';
+  type: 'ready_for_review' | 'error' | 'waiting_for_input' | 'pr_created' | 'permission_required';
   message: string;
   timestamp: Date;
   read: boolean;

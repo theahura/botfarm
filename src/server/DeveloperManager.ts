@@ -134,6 +134,18 @@ export class DeveloperManager {
         );
       }
     }
+
+    if (this.isRequestingPermission(data)) {
+      console.log(`🔒 Detected permission request pattern in: "${data.trim()}"`);
+      const developer = this.developers.get(developerId);
+      if (developer) {
+        this.notificationManager.createNotification(
+          developerId,
+          'permission_required',
+          `${developer.name} requires permission: ${data.trim()}`
+        );
+      }
+    }
   }
 
   private isWaitingForInput(content: string): boolean {
@@ -145,6 +157,22 @@ export class DeveloperManager {
     ];
     
     return waitingPatterns.some(pattern => pattern.test(content));
+  }
+
+  private isRequestingPermission(content: string): boolean {
+    const permissionPatterns = [
+      /I need permission to/i,
+      /Permission required/i,
+      /access denied/i,
+      /needs permissions/i,
+      /requires authorization/i,
+      /Permission error/i,
+      /Access permission/i,
+      /I don't have permission/i
+      /Do you want me to/i
+    ];
+    
+    return permissionPatterns.some(pattern => pattern.test(content));
   }
 
 

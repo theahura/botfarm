@@ -1,3 +1,7 @@
-Scrolling does not work
 Not getting alerts
+
 If you try and merge multiple in a row it fails (maybe because of merge conflicts)
+
+Because each sub-version is running in its own git worktree, need to figure out how to properly test builds between them
+
+Zoom text
