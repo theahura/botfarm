@@ -195,10 +195,11 @@ onMounted(async () => {
 
 <style scoped>
 .chat-page {
-  height: calc(100vh - 140px);
+  height: calc(100vh - 70px);
   display: flex;
-  max-width: 1200px;
-  margin: 0 auto;
+  max-width: none;
+  margin: 0;
+  padding: 0;
 }
 
 .chat-main {
@@ -206,6 +207,8 @@ onMounted(async () => {
   display: flex;
   flex-direction: column;
   min-width: 0;
+  height: 100%;
+  padding: 1rem;
 }
 
 .chat-header {

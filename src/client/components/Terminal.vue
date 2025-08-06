@@ -160,6 +160,10 @@ onUnmounted(() => {
   box-shadow: 0 2px 8px rgba(0,0,0,0.1);
   margin-bottom: 1rem;
   overflow: hidden;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
 }
 
 .terminal-header {
@@ -202,11 +206,15 @@ onUnmounted(() => {
 .terminal-wrapper {
   background: #1e1e1e;
   overflow: hidden;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
 }
 
 .terminal {
-  height: 500px;
+  flex: 1;
   padding: 1rem;
+  height: auto;
 }
 
 /* Ensure xterm.js styles work correctly */

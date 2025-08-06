@@ -181,6 +181,7 @@ onMounted(async () => {
 }
 
 .main-content {
-  padding: 2rem;
+  padding: 0;
+  height: calc(100vh - 70px);
 }
 </style>
