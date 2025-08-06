@@ -9,6 +9,7 @@ import { Developer, DeveloperStatus, CreateDeveloperRequest, SocketEvents } from
 export class DeveloperManager {
   private developers: Map<string, Developer> = new Map();
   private terminals: Map<string, pty.IPty> = new Map();
+  private terminalHistories: Map<string, string> = new Map();
   private gitManager: GitManager;
   private notificationManager: NotificationManager;
 
@@ -112,6 +113,10 @@ export class DeveloperManager {
   private handleTerminalOutput(developerId: string, data: string) {
     console.log(`🔄 Handling terminal output for developer ${developerId}: "${data.trim()}"`);
     
+    // Store terminal history
+    const currentHistory = this.terminalHistories.get(developerId) || '';
+    this.terminalHistories.set(developerId, currentHistory + data);
+    
     // Emit raw terminal data to connected clients
     this.io.to(`terminal:${developerId}`).emit('terminal:data', data);
     
@@ -184,6 +189,9 @@ export class DeveloperManager {
       terminal.kill();
       this.terminals.delete(developerId);
     }
+    
+    // Clean up terminal history
+    this.terminalHistories.delete(developerId);
 
     try {
       // Merge PR and cleanup using GitManager
@@ -227,6 +235,9 @@ export class DeveloperManager {
       terminal.kill();
       this.terminals.delete(developerId);
     }
+    
+    // Clean up terminal history
+    this.terminalHistories.delete(developerId);
 
     const developer = this.developers.get(developerId);
     if (developer) {
@@ -247,6 +258,10 @@ export class DeveloperManager {
 
   getTerminal(developerId: string): pty.IPty | undefined {
     return this.terminals.get(developerId);
+  }
+
+  getTerminalHistory(developerId: string): string {
+    return this.terminalHistories.get(developerId) || '';
   }
 
   sendTerminalInput(developerId: string, data: string) {
