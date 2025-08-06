@@ -24,6 +24,11 @@ export class GitManager {
       console.log('🔧 GitManager: Creating .worktrees directory');
       await fs.mkdir(path.dirname(worktreePath), { recursive: true });
       
+      // Ensure we're on main branch and pull latest changes before creating worktree
+      console.log('🔧 GitManager: Ensuring main branch is up-to-date');
+      await execAsync('git checkout main', { cwd: this.baseDirectory });
+      await execAsync('git pull origin main', { cwd: this.baseDirectory });
+      
       console.log('🔧 GitManager: Executing git worktree add command');
       const result = await execAsync(`git worktree add "${worktreePath}" -b "${branchName}" main`, {
         cwd: this.baseDirectory
@@ -102,30 +107,41 @@ export class GitManager {
       // Extract PR number from URL
       const prNumber = this.extractPRNumber(pullRequestUrl);
       
+      // Ensure we're on main branch and up-to-date before merging
+      console.log('🔧 GitManager: Ensuring main branch is up-to-date before merge');
+      await execAsync('git checkout main', {
+        cwd: this.baseDirectory
+      });
+      await execAsync('git pull origin main', {
+        cwd: this.baseDirectory
+      });
+      
       // Merge the PR
+      console.log(`🔧 GitManager: Merging PR ${prNumber}`);
       await execAsync(`gh pr merge ${prNumber} --merge`, {
         cwd: this.baseDirectory
       });
       
       // Remove the worktree
+      console.log('🔧 GitManager: Removing worktree');
       await this.removeWorktree(worktreePath);
       
-      // Switch to main branch in base directory
-      await execAsync('git checkout main', {
-        cwd: this.baseDirectory
-      });
-      
-      // Pull latest changes
+      // Pull latest changes after merge to ensure we have the merged changes
+      console.log('🔧 GitManager: Pulling latest changes after merge');
       await execAsync('git pull origin main', {
         cwd: this.baseDirectory
       });
       
       // Delete the local branch
+      console.log(`🔧 GitManager: Deleting local branch ${branchName}`);
       await execAsync(`git branch -D "${branchName}"`, {
         cwd: this.baseDirectory
       });
       
+      console.log('✅ GitManager: PR merged and cleanup completed');
+      
     } catch (error) {
+      console.error('❌ GitManager: Failed to merge PR and cleanup:', error);
       throw new Error(`Failed to merge PR and cleanup: ${(error as Error).message}`);
     }
   }
