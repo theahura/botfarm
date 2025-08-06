@@ -168,7 +168,7 @@ export class DeveloperManager {
       /requires authorization/i,
       /Permission error/i,
       /Access permission/i,
-      /I don't have permission/i
+      /I don't have permission/i,
       /Do you want me to/i
     ];
     
