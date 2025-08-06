@@ -15,10 +15,19 @@
       <div class="notification-item" 
            v-for="notification in notifications" 
            :key="notification.id"
-           :class="{ unread: !notification.read }"
+           :class="{ 
+             unread: !notification.read,
+             'permission-required': notification.type === 'permission_required'
+           }"
            @click="handleNotificationClick(notification)">
         <div class="notification-content">
-          <strong>{{ getDeveloperName(notification.developerId) }}</strong>
+          <div class="notification-header">
+            <span class="notification-icon" v-if="notification.type === 'permission_required'">🔒</span>
+            <span class="notification-icon" v-else-if="notification.type === 'waiting_for_input'">⏳</span>
+            <span class="notification-icon" v-else-if="notification.type === 'error'">❌</span>
+            <span class="notification-icon" v-else-if="notification.type === 'pr_created'">🔀</span>
+            <strong>{{ getDeveloperName(notification.developerId) }}</strong>
+          </div>
           <p>{{ notification.message }}</p>
           <small>{{ formatTime(notification.timestamp) }}</small>
         </div>
@@ -169,6 +178,26 @@ onMounted(async () => {
 .notification-item.unread {
   background: #e3f2fd;
   font-weight: 500;
+}
+
+.notification-item.permission-required {
+  background: #fff3cd;
+  border-left: 4px solid #ffc107;
+}
+
+.notification-item.permission-required.unread {
+  background: #fffacd;
+  border-left: 4px solid #ff9800;
+}
+
+.notification-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.notification-icon {
+  font-size: 1rem;
 }
 
 .notification-content p {
