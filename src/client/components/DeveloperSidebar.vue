@@ -2,7 +2,7 @@
   <div class="sidebar">
     <div class="sidebar-header">
       <h3>Developers</h3>
-      <button class="btn-new" @click="$router.push('/')">
+      <button class="btn-new" @click="showCreateForm = true">
         + New
       </button>
     </div>
@@ -47,25 +47,79 @@
     
     <div v-if="developers.length === 0" class="empty-state">
       <p>No developers</p>
-      <button class="btn-create" @click="$router.push('/')">
+      <button class="btn-create" @click="showCreateForm = true">
         Create First Developer
       </button>
+    </div>
+    
+    <!-- Create Developer Modal -->
+    <div v-if="showCreateForm" class="modal-overlay" @click="showCreateForm = false">
+      <div class="modal-content" @click.stop>
+        <h3>Create New Developer</h3>
+        
+        <form @submit.prevent="createDeveloper">
+          <div class="form-group">
+            <label for="name">Developer Name:</label>
+            <input 
+              id="name"
+              v-model="newDeveloper.name" 
+              type="text" 
+              required 
+              placeholder="e.g., Feature Developer"
+            />
+          </div>
+          
+          <div class="form-group">
+            <label for="branch">Branch Name:</label>
+            <input 
+              id="branch"
+              v-model="newDeveloper.branchName" 
+              type="text" 
+              required 
+              placeholder="e.g., feature/new-feature"
+            />
+          </div>
+          
+          <div class="form-actions">
+            <button type="button" @click="showCreateForm = false" :disabled="loading">
+              Cancel
+            </button>
+            <button type="submit" class="btn-primary" :disabled="loading">
+              {{ loading ? 'Creating...' : 'Create Developer' }}
+            </button>
+          </div>
+        </form>
+      </div>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { ref } from 'vue'
 import { useRouter } from 'vue-router'
-import type { Developer, DeveloperStatus } from '../../shared/types'
+import { useApi } from '../composables/useApi'
+import type { Developer, DeveloperStatus, CreateDeveloperRequest } from '../../shared/types'
 
 interface Props {
   developers: Developer[]
   currentDeveloperId?: string
 }
 
+interface Emits {
+  (e: 'developer-created', developer: Developer): void
+}
+
 const props = defineProps<Props>()
+const emit = defineEmits<Emits>()
 const router = useRouter()
+const api = useApi()
+
+const showCreateForm = ref(false)
+const loading = ref(false)
+const newDeveloper = ref<CreateDeveloperRequest>({
+  name: '',
+  branchName: ''
+})
 
 const formatStatus = (status: DeveloperStatus): string => {
   switch (status) {
@@ -81,6 +135,26 @@ const formatStatus = (status: DeveloperStatus): string => {
 const switchDeveloper = (developerId: string) => {
   if (developerId !== props.currentDeveloperId) {
     router.push(`/chat/${developerId}`)
+  }
+}
+
+const createDeveloper = async () => {
+  if (!newDeveloper.value.name || !newDeveloper.value.branchName) return
+  
+  loading.value = true
+  try {
+    const developer = await api.createDeveloper(newDeveloper.value)
+    emit('developer-created', developer)
+    showCreateForm.value = false
+    newDeveloper.value = { name: '', branchName: '' }
+    
+    // Navigate to the new developer's chat
+    router.push(`/chat/${developer.id}`)
+  } catch (error) {
+    console.error('Failed to create developer:', error)
+    alert('Failed to create developer. Please try again.')
+  } finally {
+    loading.value = false
   }
 }
 </script>
@@ -260,5 +334,99 @@ const switchDeveloper = (developerId: string) => {
 
 .btn-create:hover {
   background: #059669;
+}
+
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0,0,0,0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.modal-content {
+  background: white;
+  border-radius: 8px;
+  padding: 2rem;
+  max-width: 500px;
+  width: 90%;
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+.modal-content h3 {
+  margin: 0 0 1.5rem 0;
+  color: #374151;
+}
+
+.form-group {
+  margin-bottom: 1rem;
+}
+
+.form-group label {
+  display: block;
+  margin-bottom: 0.5rem;
+  color: #374151;
+  font-weight: 500;
+}
+
+.form-group input {
+  width: 100%;
+  padding: 0.75rem;
+  border: 1px solid #d1d5db;
+  border-radius: 4px;
+  font-size: 0.9rem;
+  box-sizing: border-box;
+}
+
+.form-group input:focus {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+}
+
+.form-actions {
+  display: flex;
+  gap: 1rem;
+  justify-content: flex-end;
+  margin-top: 2rem;
+}
+
+.form-actions button {
+  padding: 0.75rem 1.5rem;
+  border: 1px solid #d1d5db;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.9rem;
+}
+
+.form-actions button:not(.btn-primary) {
+  background: white;
+  color: #6b7280;
+}
+
+.form-actions button:not(.btn-primary):hover {
+  background: #f9fafb;
+}
+
+.btn-primary {
+  background: #3b82f6;
+  color: white;
+  border: 1px solid #3b82f6;
+}
+
+.btn-primary:hover {
+  background: #2563eb;
+}
+
+.btn-primary:disabled {
+  background: #9ca3af;
+  border-color: #9ca3af;
+  cursor: not-allowed;
 }
 </style>
