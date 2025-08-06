@@ -3,6 +3,7 @@
     <DeveloperSidebar 
       :developers="allDevelopers" 
       :currentDeveloperId="developerId" 
+      @developer-created="handleDeveloperCreated"
     />
     <div class="chat-main">
       <div class="chat-header">
@@ -156,6 +157,13 @@ const commitChanges = async () => {
     alert('Failed to commit changes. Please try again.')
   } finally {
     loading.value = false
+  }
+}
+
+const handleDeveloperCreated = (newDeveloper: Developer) => {
+  const exists = allDevelopers.value.find(d => d.id === newDeveloper.id)
+  if (!exists) {
+    allDevelopers.value.push(newDeveloper)
   }
 }
 
