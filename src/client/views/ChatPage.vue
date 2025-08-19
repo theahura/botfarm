@@ -45,8 +45,8 @@
       </div>
     </div>
 
-    <!-- Terminal Component -->
-    <Terminal 
+    <!-- Chat Terminal Component -->
+    <FakeTerminal 
       v-if="developer" 
       :developerId="developerId" 
       :developerName="developer.name" 
@@ -89,7 +89,7 @@ import { ref, onMounted, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { useApi } from '../composables/useApi'
 import { useSocket } from '../composables/useSocket'
-import Terminal from '../components/Terminal.vue'
+import FakeTerminal from '../components/FakeTerminal.vue'
 import DeveloperSidebar from '../components/DeveloperSidebar.vue'
 import type { Developer, ChatMessage, DeveloperStatus } from '../../shared/types'
 

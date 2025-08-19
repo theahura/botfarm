@@ -109,37 +109,37 @@ io.on('connection', (socket) => {
     console.error(`🔌 Socket.IO error for ${socket.id}:`, error);
   });
   
-  // Handle terminal connection requests
-  socket.on('terminal:connect', (developerId: string) => {
-    console.log(`🔌 Client ${socket.id} connecting to terminal for developer ${developerId}`);
-    const terminal = developerManager.getTerminal(developerId);
-    if (terminal) {
-      // Join a room for this developer's terminal
+  // Handle chat connection requests
+  socket.on('chat:connect', (developerId: string) => {
+    console.log(`🔌 Client ${socket.id} connecting to chat for developer ${developerId}`);
+    const developer = developerManager.getDeveloper(developerId);
+    if (developer) {
+      // Join a room for this developer's chat
       socket.join(`terminal:${developerId}`);
-      console.log(`✅ Client ${socket.id} joined terminal room for developer ${developerId}`);
+      console.log(`✅ Client ${socket.id} joined chat room for developer ${developerId}`);
       
-      // Send terminal history to the newly connected client
-      const history = developerManager.getTerminalHistory(developerId);
-      if (history) {
-        socket.emit('terminal:history', history);
-        console.log(`📜 Sent terminal history to client ${socket.id} (${history.length} characters)`);
+      // Send chat history to the newly connected client
+      const history = developerManager.getChatHistory(developerId);
+      if (history.length > 0) {
+        socket.emit('chat:history', history);
+        console.log(`📜 Sent chat history to client ${socket.id} (${history.length} messages)`);
       }
     } else {
-      socket.emit('terminal:error', `Terminal not found for developer ${developerId}`);
+      socket.emit('chat:error', `Developer not found: ${developerId}`);
     }
   });
   
-  socket.on('terminal:disconnect', (developerId: string) => {
-    console.log(`🔌 Client ${socket.id} disconnecting from terminal for developer ${developerId}`);
+  socket.on('chat:disconnect', (developerId: string) => {
+    console.log(`🔌 Client ${socket.id} disconnecting from chat for developer ${developerId}`);
     socket.leave(`terminal:${developerId}`);
   });
   
-  socket.on('terminal:input', ({ developerId, data }: { developerId: string, data: string }) => {
-    console.log(`⌨️ Client ${socket.id} sending input to terminal ${developerId}: "${data}"`);
+  socket.on('chat:input', async ({ developerId, message }: { developerId: string, message: string }) => {
+    console.log(`⌨️ Client ${socket.id} sending message to developer ${developerId}: "${message}"`);
     try {
-      developerManager.sendTerminalInput(developerId, data);
+      await developerManager.sendUserInput(developerId, message);
     } catch (error) {
-      socket.emit('terminal:error', (error as Error).message);
+      socket.emit('chat:error', (error as Error).message);
     }
   });
   

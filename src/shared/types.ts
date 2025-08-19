@@ -51,6 +51,11 @@ export interface SocketEvents {
   'developer:updated': Developer;
   'developer:deleted': string;
   'chat:message': ChatMessage;
+  'chat:connect': string;
+  'chat:disconnect': string;
+  'chat:input': { developerId: string; message: string };
+  'chat:history': ChatMessage[];
+  'chat:error': string;
   'notification:new': Notification;
   'notification:read': string;
 }

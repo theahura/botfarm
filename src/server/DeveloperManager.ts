@@ -211,15 +211,11 @@ export class DeveloperManager {
       throw new Error('No pull request found for this developer');
     }
 
-    // Kill the Claude terminal first
-    const terminal = this.terminals.get(developerId);
-    if (terminal) {
-      terminal.kill();
-      this.terminals.delete(developerId);
-    }
+    // Clean up Claude session
+    this.claudeSessions.delete(developerId);
     
-    // Clean up terminal history
-    this.terminalHistories.delete(developerId);
+    // Clean up chat history
+    this.chatHistories.delete(developerId);
 
     try {
       // Merge PR and cleanup using GitManager
@@ -246,8 +242,8 @@ export class DeveloperManager {
       );
 
     } catch (error) {
-      // If merge fails, restart the Claude terminal
-      this.startClaudeTerminal(developer);
+      // If merge fails, restart the Claude session
+      await this.startClaudeSession(developer);
       this.notificationManager.createNotification(
         developerId,
         'error',
@@ -258,14 +254,11 @@ export class DeveloperManager {
   }
 
   async deleteDeveloper(developerId: string): Promise<void> {
-    const terminal = this.terminals.get(developerId);
-    if (terminal) {
-      terminal.kill();
-      this.terminals.delete(developerId);
-    }
+    // Clean up Claude session
+    this.claudeSessions.delete(developerId);
     
-    // Clean up terminal history
-    this.terminalHistories.delete(developerId);
+    // Clean up chat history
+    this.chatHistories.delete(developerId);
 
     const developer = this.developers.get(developerId);
     if (developer) {
@@ -284,21 +277,12 @@ export class DeveloperManager {
     return Array.from(this.developers.values());
   }
 
-  getTerminal(developerId: string): pty.IPty | undefined {
-    return this.terminals.get(developerId);
+  getChatHistory(developerId: string): ChatMessage[] {
+    return this.chatHistories.get(developerId) || [];
   }
 
-  getTerminalHistory(developerId: string): string {
-    return this.terminalHistories.get(developerId) || '';
-  }
-
-  sendTerminalInput(developerId: string, data: string) {
-    const terminal = this.terminals.get(developerId);
-    if (!terminal) {
-      throw new Error('Developer terminal not found');
-    }
-
-    terminal.write(data);
+  async sendUserInput(developerId: string, data: string): Promise<void> {
+    await this.sendMessageToClaude(developerId, data);
   }
 
   async discoverExistingDevelopers(): Promise<void> {
@@ -353,8 +337,8 @@ export class DeveloperManager {
 
     console.log(`🔄 DeveloperManager: Activating developer ${developer.name} (${developerId})`);
 
-    // Start the Claude terminal for this developer
-    this.startClaudeTerminal(developer);
+    // Start the Claude session for this developer
+    await this.startClaudeSession(developer);
     
     // Update status to active
     this.updateDeveloperStatus(developerId, DeveloperStatus.ACTIVE);
@@ -381,19 +365,4 @@ export class DeveloperManager {
     }
   }
 
-  private getNodePath(): string {
-    try {
-      return execSync('which node', { encoding: 'utf8' }).trim();
-    } catch {
-      return process.execPath;
-    }
-  }
-
-  private getClaudePath(): string {
-    try {
-      return execSync('which claude', { encoding: 'utf8' }).trim();
-    } catch {
-      throw new Error('Claude CLI not found in PATH. Please ensure Claude is installed and available.');
-    }
-  }
 }
