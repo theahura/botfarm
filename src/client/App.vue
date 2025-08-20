@@ -4,10 +4,13 @@
       <div class="nav-brand">
         <h1>🤖 BotFarm</h1>
       </div>
-      <div class="nav-notifications" v-if="unreadNotifications > 0">
-        <span class="notification-badge" @click="showNotifications = !showNotifications">
-          {{ unreadNotifications }}
-        </span>
+      <div class="nav-notifications">
+        <div class="notification-bell" @click="showNotifications = !showNotifications">
+          <span class="bell-icon">🔔</span>
+          <span class="notification-badge" v-if="unreadNotifications > 0">
+            {{ unreadNotifications }}
+          </span>
+        </div>
       </div>
     </nav>
     
@@ -214,16 +217,38 @@ watch(socket, (newSocket) => {
   position: relative;
 }
 
+.notification-bell {
+  position: relative;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.5rem;
+  border-radius: 8px;
+  transition: background-color 0.2s;
+}
+
+.notification-bell:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.bell-icon {
+  font-size: 1.25rem;
+}
+
 .notification-badge {
   background: #e74c3c;
   color: white;
   border-radius: 50%;
-  padding: 0.25rem 0.5rem;
-  font-size: 0.875rem;
-  cursor: pointer;
-  min-width: 1.5rem;
+  padding: 0.125rem 0.375rem;
+  font-size: 0.75rem;
+  min-width: 1.25rem;
   text-align: center;
   display: inline-block;
+  position: absolute;
+  top: 0.25rem;
+  right: 0.25rem;
+  transform: translate(50%, -50%);
 }
 
 .notifications-panel {
