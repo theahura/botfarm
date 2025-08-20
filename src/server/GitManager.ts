@@ -119,32 +119,28 @@ export class GitManager {
       // Extract PR number from URL
       const prNumber = this.extractPRNumber(pullRequestUrl);
       
-      // Check if PR is already merged
-      console.log(`🔧 GitManager: Checking status of PR ${prNumber}`);
-      const { stdout: prStatus } = await execAsync(`gh pr view ${prNumber} --json state,mergedAt`, {
+      // Ensure we're on main branch and up-to-date before merging
+      console.log('🔧 GitManager: Ensuring main branch is up-to-date before merge');
+      await execAsync('git checkout main', {
+        cwd: this.baseDirectory
+      });
+      await execAsync('git pull origin main', {
         cwd: this.baseDirectory
       });
       
-      const prData = JSON.parse(prStatus);
-      const isAlreadyMerged = prData.state === 'MERGED' || prData.mergedAt !== null;
-      
-      if (isAlreadyMerged) {
-        console.log(`ℹ️ GitManager: PR ${prNumber} is already merged, skipping merge step`);
-      } else {
-        // Ensure we're on main branch and up-to-date before merging
-        console.log('🔧 GitManager: Ensuring main branch is up-to-date before merge');
-        await execAsync('git checkout main', {
-          cwd: this.baseDirectory
-        });
-        await execAsync('git pull origin main', {
-          cwd: this.baseDirectory
-        });
-        
-        // Merge the PR
-        console.log(`🔧 GitManager: Merging PR ${prNumber}`);
+      // Merge the PR
+      console.log(`🔧 GitManager: Merging PR ${prNumber}`);
+      try {
         await execAsync(`gh pr merge ${prNumber} --squash`, {
           cwd: this.baseDirectory
         });
+      } catch (mergeError) {
+        const errorMessage = (mergeError as any).message || '';
+        if (errorMessage.includes('already merged') || errorMessage.includes('pull request is in clean status')) {
+          console.log(`ℹ️ GitManager: PR ${prNumber} is already merged, continuing with cleanup`);
+        } else {
+          throw mergeError;
+        }
       }
       
       // Remove the worktree
