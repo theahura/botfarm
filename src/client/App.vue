@@ -28,6 +28,7 @@
             <span class="notification-icon" v-else-if="toast.type === 'waiting_for_input'">⏳</span>
             <span class="notification-icon" v-else-if="toast.type === 'error'">❌</span>
             <span class="notification-icon" v-else-if="toast.type === 'pr_created'">🔀</span>
+            <span class="notification-icon" v-else-if="toast.type === 'idle'">💤</span>
             <strong>{{ getDeveloperName(toast.developerId) }}</strong>
             <button class="toast-close" @click.stop="dismissToast(toast.id)">×</button>
           </div>
@@ -51,6 +52,7 @@
             <span class="notification-icon" v-else-if="notification.type === 'waiting_for_input'">⏳</span>
             <span class="notification-icon" v-else-if="notification.type === 'error'">❌</span>
             <span class="notification-icon" v-else-if="notification.type === 'pr_created'">🔀</span>
+            <span class="notification-icon" v-else-if="notification.type === 'idle'">💤</span>
             <strong>{{ getDeveloperName(notification.developerId) }}</strong>
           </div>
           <p>{{ notification.message }}</p>
