@@ -4,8 +4,13 @@ import { Notification, SocketEvents } from '../shared/types';
 
 export class NotificationManager {
   private notifications: Map<string, Notification> = new Map();
+  private updateCallback?: (developerId: string) => void;
 
   constructor(private io: Server) {}
+
+  setUpdateCallback(callback: (developerId: string) => void) {
+    this.updateCallback = callback;
+  }
 
   createNotification(
     developerId: string,
@@ -23,6 +28,11 @@ export class NotificationManager {
 
     this.notifications.set(notification.id, notification);
     this.io.emit('notification:new', notification);
+    
+    // Update developer notification count
+    if (this.updateCallback) {
+      this.updateCallback(developerId);
+    }
     
     return notification;
   }
@@ -47,6 +57,10 @@ export class NotificationManager {
 
   getNotificationsForDeveloper(developerId: string): Notification[] {
     return this.getAllNotifications().filter(n => n.developerId === developerId);
+  }
+
+  getUnreadCountForDeveloper(developerId: string): number {
+    return this.getAllNotifications().filter(n => n.developerId === developerId && !n.read).length;
   }
 
   clearNotificationsForDeveloper(developerId: string): void {

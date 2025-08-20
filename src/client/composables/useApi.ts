@@ -69,6 +69,12 @@ export function useApi() {
     })
   }
 
+  const clearDeveloperNotifications = (developerId: string): Promise<{ success: boolean }> => {
+    return fetchJson(`/developers/${developerId}/notifications/clear`, {
+      method: 'POST'
+    })
+  }
+
   return {
     getDevelopers,
     getDeveloper,
@@ -78,6 +84,7 @@ export function useApi() {
     mergePR,
     activateDeveloper,
     getNotifications,
-    markNotificationAsRead
+    markNotificationAsRead,
+    clearDeveloperNotifications
   }
 }

@@ -21,6 +21,11 @@ export class DeveloperManager {
     this.gitManager = new GitManager();
     this.notificationManager = new NotificationManager(io);
     
+    // Set up callback for notification count updates
+    this.notificationManager.setUpdateCallback((developerId) => {
+      this.updateDeveloperNotificationCount(developerId);
+    });
+    
     // Discover existing worktrees on startup
     this.discoverExistingDevelopers();
   }
@@ -378,9 +383,24 @@ export class DeveloperManager {
     if (developer) {
       developer.status = status;
       developer.lastActivity = new Date();
+      developer.notificationCount = this.notificationManager.getUnreadCountForDeveloper(developerId);
       this.developers.set(developerId, developer);
       this.io.emit('developer:updated', developer);
     }
+  }
+
+  updateDeveloperNotificationCount(developerId: string) {
+    const developer = this.developers.get(developerId);
+    if (developer) {
+      developer.notificationCount = this.notificationManager.getUnreadCountForDeveloper(developerId);
+      this.developers.set(developerId, developer);
+      this.io.emit('developer:updated', developer);
+    }
+  }
+
+  clearDeveloperNotifications(developerId: string) {
+    this.notificationManager.clearNotificationsForDeveloper(developerId);
+    this.updateDeveloperNotificationCount(developerId);
   }
 
   private updateLastActivity(developerId: string) {

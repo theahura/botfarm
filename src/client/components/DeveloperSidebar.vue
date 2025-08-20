@@ -23,10 +23,12 @@
         <div class="developer-indicators">
           <div 
             v-if="dev.notificationCount > 0" 
-            class="notification-badge"
+            class="notification-bell"
             :title="`${dev.notificationCount} unread notifications`"
+            @click.stop="clearNotifications(dev.id)"
           >
-            {{ dev.notificationCount }}
+            🔔
+            <span class="notification-count">{{ dev.notificationCount }}</span>
           </div>
           
           <div class="status-indicator" :class="dev.status" :title="formatStatus(dev.status)"></div>
@@ -157,6 +159,14 @@ const createDeveloper = async () => {
     loading.value = false
   }
 }
+
+const clearNotifications = async (developerId: string) => {
+  try {
+    await api.clearDeveloperNotifications(developerId)
+  } catch (error) {
+    console.error('Failed to clear notifications:', error)
+  }
+}
 </script>
 
 <style scoped>
@@ -253,18 +263,37 @@ const createDeveloper = async () => {
   gap: 0.5rem;
 }
 
-.notification-badge {
-  background: #ef4444;
-  color: white;
-  border-radius: 50%;
-  width: 18px;
-  height: 18px;
+.notification-bell {
+  position: relative;
+  cursor: pointer;
+  padding: 2px;
+  border-radius: 4px;
+  transition: background-color 0.2s;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 0.7rem;
+  font-size: 1rem;
+}
+
+.notification-bell:hover {
+  background-color: #f3f4f6;
+}
+
+.notification-count {
+  position: absolute;
+  top: -2px;
+  right: -2px;
+  background: #ef4444;
+  color: white;
+  border-radius: 50%;
+  width: 16px;
+  height: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.65rem;
   font-weight: 500;
-  min-width: 18px;
+  min-width: 16px;
 }
 
 .status-indicator {

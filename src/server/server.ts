@@ -94,6 +94,11 @@ app.post('/api/notifications/:id/read', (req, res) => {
   res.json({ success: true });
 });
 
+app.post('/api/developers/:id/notifications/clear', (req, res) => {
+  developerManager.clearDeveloperNotifications(req.params.id);
+  res.json({ success: true });
+});
+
 app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, '../public/index.html'));
 });
