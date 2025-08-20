@@ -68,7 +68,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useSocket } from './composables/useSocket'
 import { useApi } from './composables/useApi'
@@ -135,6 +135,42 @@ const showToast = (notification: Notification) => {
   }, dismissTime)
 }
 
+const setupSocketListeners = (socketInstance: any) => {
+  if (!socketInstance) return
+
+  socketInstance.on('notification:new', (notification: Notification) => {
+    console.log('📥 Received notification:new event:', notification)
+    notifications.value.unshift(notification)
+    showToast(notification)
+  })
+
+  socketInstance.on('notification:read', (notificationId: string) => {
+    console.log('📥 Received notification:read event:', notificationId)
+    const notification = notifications.value.find(n => n.id === notificationId)
+    if (notification) {
+      notification.read = true
+    }
+  })
+
+  socketInstance.on('developer:created', (developer: Developer) => {
+    console.log('📥 Received developer:created event:', developer)
+    developers.value.push(developer)
+  })
+
+  socketInstance.on('developer:updated', (developer: Developer) => {
+    console.log('📥 Received developer:updated event:', developer)
+    const index = developers.value.findIndex(d => d.id === developer.id)
+    if (index >= 0) {
+      developers.value[index] = developer
+    }
+  })
+
+  socketInstance.on('developer:deleted', (developerId: string) => {
+    console.log('📥 Received developer:deleted event:', developerId)
+    developers.value = developers.value.filter(d => d.id !== developerId)
+  })
+}
+
 onMounted(async () => {
   try {
     notifications.value = await api.getNotifications()
@@ -142,36 +178,15 @@ onMounted(async () => {
   } catch (error) {
     console.error('Failed to load initial data:', error)
   }
-
-  if (socket) {
-    socket.on('notification:new', (notification) => {
-      notifications.value.unshift(notification)
-      showToast(notification)
-    })
-
-    socket.on('notification:read', (notificationId) => {
-      const notification = notifications.value.find(n => n.id === notificationId)
-      if (notification) {
-        notification.read = true
-      }
-    })
-
-    socket.on('developer:created', (developer) => {
-      developers.value.push(developer)
-    })
-
-    socket.on('developer:updated', (developer) => {
-      const index = developers.value.findIndex(d => d.id === developer.id)
-      if (index >= 0) {
-        developers.value[index] = developer
-      }
-    })
-
-    socket.on('developer:deleted', (developerId) => {
-      developers.value = developers.value.filter(d => d.id !== developerId)
-    })
-  }
 })
+
+// Watch for socket to become available and set up listeners
+watch(socket, (newSocket) => {
+  if (newSocket) {
+    console.log('🔌 Setting up socket listeners')
+    setupSocketListeners(newSocket)
+  }
+}, { immediate: true })
 </script>
 
 <style scoped>

@@ -42,6 +42,6 @@ export function useSocket() {
   })
 
   return {
-    socket: socket.value
+    socket
   }
 }
