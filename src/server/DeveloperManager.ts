@@ -311,6 +311,30 @@ export class DeveloperManager {
     this.resetIdleTimer(developerId);
   }
 
+  resetTerminal(developerId: string) {
+    console.log(`🔄 Resetting terminal for developer ${developerId}`);
+    
+    const developer = this.developers.get(developerId);
+    if (!developer) {
+      throw new Error('Developer not found');
+    }
+
+    // Kill existing terminal if it exists
+    const existingTerminal = this.terminals.get(developerId);
+    if (existingTerminal) {
+      existingTerminal.kill();
+      this.terminals.delete(developerId);
+    }
+
+    // Clear terminal history
+    this.terminalHistories.delete(developerId);
+
+    // Start a new terminal
+    this.startClaudeTerminal(developer);
+    
+    console.log(`✅ Terminal reset complete for developer ${developerId}`);
+  }
+
   async discoverExistingDevelopers(): Promise<void> {
     console.log('🔍 DeveloperManager: Starting discovery of existing developers');
     

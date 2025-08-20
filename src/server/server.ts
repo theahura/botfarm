@@ -134,6 +134,15 @@ io.on('connection', (socket) => {
       socket.emit('terminal:error', (error as Error).message);
     }
   });
+
+  socket.on('terminal:reset', (developerId: string) => {
+    console.log(`🔄 Client ${socket.id} requesting terminal reset for developer ${developerId}`);
+    try {
+      developerManager.resetTerminal(developerId);
+    } catch (error) {
+      socket.emit('terminal:error', (error as Error).message);
+    }
+  });
   
   // Log when we emit events
   const originalEmit = socket.emit;

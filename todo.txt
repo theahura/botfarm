@@ -5,6 +5,6 @@ If you try and merge multiple in a row it fails (maybe because of merge conflict
 
 Because each sub-version is running in its own git worktree, need to figure out how to properly test builds between them
 
-reset
+reset the terminal
 
 Zoom text
