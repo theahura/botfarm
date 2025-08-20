@@ -90,6 +90,12 @@ const unreadNotifications = computed(() =>
   notifications.value.filter(n => !n.read).length
 )
 
+const updatePageTitle = () => {
+  const baseTitle = 'BotFarm - Claude Code Developer Management'
+  const count = unreadNotifications.value
+  document.title = count > 0 ? `(${count}) ${baseTitle}` : baseTitle
+}
+
 const getDeveloperName = (developerId: string) => {
   const developer = developers.value.find(d => d.id === developerId)
   return developer?.name || 'Unknown Developer'
@@ -196,6 +202,11 @@ watch(socket, (newSocket) => {
     console.log('🔌 Setting up socket listeners')
     setupSocketListeners(newSocket)
   }
+}, { immediate: true })
+
+// Watch for changes in unread notifications and update page title
+watch(unreadNotifications, () => {
+  updatePageTitle()
 }, { immediate: true })
 </script>
 
