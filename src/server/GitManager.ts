@@ -119,20 +119,33 @@ export class GitManager {
       // Extract PR number from URL
       const prNumber = this.extractPRNumber(pullRequestUrl);
       
-      // Ensure we're on main branch and up-to-date before merging
-      console.log('🔧 GitManager: Ensuring main branch is up-to-date before merge');
-      await execAsync('git checkout main', {
-        cwd: this.baseDirectory
-      });
-      await execAsync('git pull origin main', {
+      // Check if PR is already merged
+      console.log(`🔧 GitManager: Checking status of PR ${prNumber}`);
+      const { stdout: prStatus } = await execAsync(`gh pr view ${prNumber} --json state,mergedAt`, {
         cwd: this.baseDirectory
       });
       
-      // Merge the PR
-      console.log(`🔧 GitManager: Merging PR ${prNumber}`);
-      await execAsync(`gh pr merge ${prNumber} --squash`, {
-        cwd: this.baseDirectory
-      });
+      const prData = JSON.parse(prStatus);
+      const isAlreadyMerged = prData.state === 'MERGED' || prData.mergedAt !== null;
+      
+      if (isAlreadyMerged) {
+        console.log(`ℹ️ GitManager: PR ${prNumber} is already merged, skipping merge step`);
+      } else {
+        // Ensure we're on main branch and up-to-date before merging
+        console.log('🔧 GitManager: Ensuring main branch is up-to-date before merge');
+        await execAsync('git checkout main', {
+          cwd: this.baseDirectory
+        });
+        await execAsync('git pull origin main', {
+          cwd: this.baseDirectory
+        });
+        
+        // Merge the PR
+        console.log(`🔧 GitManager: Merging PR ${prNumber}`);
+        await execAsync(`gh pr merge ${prNumber} --squash`, {
+          cwd: this.baseDirectory
+        });
+      }
       
       // Remove the worktree
       console.log('🔧 GitManager: Removing worktree');
