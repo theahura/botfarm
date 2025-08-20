@@ -36,6 +36,15 @@ export class NotificationManager {
     }
   }
 
+  markAllAsRead(): void {
+    for (const notification of this.notifications.values()) {
+      if (!notification.read) {
+        notification.read = true;
+        this.io.emit('notification:read', notification.id);
+      }
+    }
+  }
+
   getAllNotifications(): Notification[] {
     return Array.from(this.notifications.values())
       .sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime());

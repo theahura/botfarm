@@ -94,6 +94,11 @@ app.post('/api/notifications/:id/read', (req, res) => {
   res.json({ success: true });
 });
 
+app.post('/api/notifications/read-all', (req, res) => {
+  notificationManager.markAllAsRead();
+  res.json({ success: true });
+});
+
 app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, '../public/index.html'));
 });
