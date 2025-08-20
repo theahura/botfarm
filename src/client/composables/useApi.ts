@@ -69,6 +69,12 @@ export function useApi() {
     })
   }
 
+  const markAllNotificationsAsRead = (): Promise<{ success: boolean }> => {
+    return fetchJson('/notifications/read-all', {
+      method: 'POST'
+    })
+  }
+
   return {
     getDevelopers,
     getDeveloper,
@@ -78,6 +84,7 @@ export function useApi() {
     mergePR,
     activateDeveloper,
     getNotifications,
-    markNotificationAsRead
+    markNotificationAsRead,
+    markAllNotificationsAsRead
   }
 }

@@ -5,7 +5,7 @@
         <h1>🤖 BotFarm</h1>
       </div>
       <div class="nav-notifications">
-        <div class="notification-bell" @click="showNotifications = !showNotifications">
+        <div class="notification-bell" @click="handleBellClick">
           <span class="bell-icon">🔔</span>
           <span class="notification-badge" v-if="unreadNotifications > 0">
             {{ unreadNotifications }}
@@ -97,6 +97,13 @@ const getDeveloperName = (developerId: string) => {
 
 const formatTime = (timestamp: Date) => {
   return new Date(timestamp).toLocaleTimeString()
+}
+
+const handleBellClick = async () => {
+  showNotifications.value = !showNotifications.value
+  if (unreadNotifications.value > 0) {
+    await api.markAllNotificationsAsRead()
+  }
 }
 
 const handleNotificationClick = async (notification: Notification) => {
