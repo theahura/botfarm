@@ -130,9 +130,18 @@ export class GitManager {
       
       // Merge the PR
       console.log(`🔧 GitManager: Merging PR ${prNumber}`);
-      await execAsync(`gh pr merge ${prNumber} --squash`, {
-        cwd: this.baseDirectory
-      });
+      try {
+        await execAsync(`gh pr merge ${prNumber} --squash`, {
+          cwd: this.baseDirectory
+        });
+      } catch (mergeError) {
+        const errorMessage = (mergeError as any).message || '';
+        if (errorMessage.includes('already merged') || errorMessage.includes('pull request is in clean status')) {
+          console.log(`ℹ️ GitManager: PR ${prNumber} is already merged, continuing with cleanup`);
+        } else {
+          throw mergeError;
+        }
+      }
       
       // Remove the worktree
       console.log('🔧 GitManager: Removing worktree');
