@@ -11,6 +11,31 @@
       </div>
     </nav>
     
+    <!-- Toast notifications -->
+    <div class="toast-container">
+      <div v-for="toast in toastNotifications" 
+           :key="toast.id"
+           class="toast-notification"
+           :class="{ 
+             'toast-entering': toast.entering,
+             'toast-leaving': toast.leaving,
+             'permission-required': toast.type === 'permission_required'
+           }"
+           @click="handleToastClick(toast)">
+        <div class="toast-content">
+          <div class="toast-header">
+            <span class="notification-icon" v-if="toast.type === 'permission_required'">🔒</span>
+            <span class="notification-icon" v-else-if="toast.type === 'waiting_for_input'">⏳</span>
+            <span class="notification-icon" v-else-if="toast.type === 'error'">❌</span>
+            <span class="notification-icon" v-else-if="toast.type === 'pr_created'">🔀</span>
+            <strong>{{ getDeveloperName(toast.developerId) }}</strong>
+            <button class="toast-close" @click.stop="dismissToast(toast.id)">×</button>
+          </div>
+          <p>{{ toast.message }}</p>
+        </div>
+      </div>
+    </div>
+
     <div class="notifications-panel" v-if="showNotifications">
       <div class="notification-item" 
            v-for="notification in notifications" 
@@ -54,6 +79,7 @@ const api = useApi()
 const showNotifications = ref(false)
 const notifications = ref<Notification[]>([])
 const developers = ref<Developer[]>([])
+const toastNotifications = ref<(Notification & { entering?: boolean; leaving?: boolean })[]>([])
 
 const unreadNotifications = computed(() => 
   notifications.value.filter(n => !n.read).length
@@ -76,6 +102,37 @@ const handleNotificationClick = async (notification: Notification) => {
   showNotifications.value = false
 }
 
+const handleToastClick = async (toast: Notification) => {
+  dismissToast(toast.id)
+  await handleNotificationClick(toast)
+}
+
+const dismissToast = (toastId: string) => {
+  const toast = toastNotifications.value.find(t => t.id === toastId)
+  if (toast) {
+    toast.leaving = true
+    setTimeout(() => {
+      toastNotifications.value = toastNotifications.value.filter(t => t.id !== toastId)
+    }, 300)
+  }
+}
+
+const showToast = (notification: Notification) => {
+  const toast = { ...notification, entering: true }
+  toastNotifications.value.push(toast)
+  
+  // Remove entering animation after it completes
+  setTimeout(() => {
+    toast.entering = false
+  }, 300)
+  
+  // Auto-dismiss after 5 seconds (longer for permission requests)
+  const dismissTime = notification.type === 'permission_required' ? 10000 : 5000
+  setTimeout(() => {
+    dismissToast(notification.id)
+  }, dismissTime)
+}
+
 onMounted(async () => {
   try {
     notifications.value = await api.getNotifications()
@@ -87,6 +144,7 @@ onMounted(async () => {
   if (socket) {
     socket.on('notification:new', (notification) => {
       notifications.value.unshift(notification)
+      showToast(notification)
     })
 
     socket.on('notification:read', (notificationId) => {
@@ -212,5 +270,80 @@ onMounted(async () => {
 .main-content {
   padding: 0;
   height: calc(100vh - 70px);
+}
+
+/* Toast notifications */
+.toast-container {
+  position: fixed;
+  top: 80px;
+  right: 1rem;
+  z-index: 1001;
+  pointer-events: none;
+}
+
+.toast-notification {
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+  margin-bottom: 0.5rem;
+  max-width: 400px;
+  pointer-events: auto;
+  transform: translateX(100%);
+  transition: transform 0.3s ease-in-out, opacity 0.3s ease-in-out;
+  opacity: 0;
+}
+
+.toast-notification.toast-entering {
+  transform: translateX(0);
+  opacity: 1;
+}
+
+.toast-notification.toast-leaving {
+  transform: translateX(100%);
+  opacity: 0;
+}
+
+.toast-notification.permission-required {
+  border-left: 4px solid #ffc107;
+  background: #fffacd;
+}
+
+.toast-content {
+  padding: 1rem;
+}
+
+.toast-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.toast-close {
+  background: none;
+  border: none;
+  font-size: 1.25rem;
+  cursor: pointer;
+  color: #666;
+  padding: 0;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  transition: background-color 0.2s;
+}
+
+.toast-close:hover {
+  background: #f0f0f0;
+  color: #333;
+}
+
+.toast-content p {
+  margin: 0;
+  color: #333;
+  font-size: 0.9rem;
 }
 </style>

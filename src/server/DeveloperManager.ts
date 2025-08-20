@@ -15,7 +15,7 @@ export class DeveloperManager {
   private gitManager: GitManager;
   private notificationManager: NotificationManager;
   
-  private static readonly IDLE_TIMEOUT_MS = 30 * 1000; // 30 seconds
+  private static readonly IDLE_TIMEOUT_MS = 5 * 1000; // 30 seconds
 
   constructor(private io: Server) {
     this.gitManager = new GitManager();
