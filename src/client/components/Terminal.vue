@@ -36,6 +36,31 @@ const isVisible = ref(true)
 let terminal: Terminal | null = null
 let fitAddon: FitAddon | null = null
 
+const setupSocketConnection = (socketInstance: any) => {
+  if (!socketInstance || !terminal) return
+
+  // Connect to terminal stream
+  socketInstance.emit('terminal:connect', props.developerId)
+  
+  socketInstance.on('terminal:history', (history: string) => {
+    if (terminal && history) {
+      terminal.write(history)
+    }
+  })
+  
+  socketInstance.on('terminal:data', (data: string) => {
+    if (terminal) {
+      terminal.write(data)
+    }
+  })
+  
+  socketInstance.on('terminal:error', (error: string) => {
+    if (terminal) {
+      terminal.write(`\r\n\x1b[31mTerminal Error: ${error}\x1b[0m\r\n`)
+    }
+  })
+}
+
 const initializeTerminal = () => {
   if (!terminalElement.value) return
 
@@ -76,32 +101,14 @@ const initializeTerminal = () => {
 
   // Handle user input
   terminal.onData((data) => {
-    if (socket) {
-      socket.emit('terminal:input', { developerId: props.developerId, data })
+    if (socket.value) {
+      socket.value.emit('terminal:input', { developerId: props.developerId, data })
     }
   })
 
-  // Connect to terminal stream
-  if (socket) {
-    socket.emit('terminal:connect', props.developerId)
-    
-    socket.on('terminal:history', (history) => {
-      if (terminal && history) {
-        terminal.write(history)
-      }
-    })
-    
-    socket.on('terminal:data', (data) => {
-      if (terminal) {
-        terminal.write(data)
-      }
-    })
-    
-    socket.on('terminal:error', (error) => {
-      if (terminal) {
-        terminal.write(`\r\n\x1b[31mTerminal Error: ${error}\x1b[0m\r\n`)
-      }
-    })
+  // Set up socket connection if available
+  if (socket.value) {
+    setupSocketConnection(socket.value)
   }
 
   // Handle window resize
@@ -116,11 +123,11 @@ const initializeTerminal = () => {
   // Return cleanup function
   return () => {
     window.removeEventListener('resize', handleResize)
-    if (socket) {
-      socket.emit('terminal:disconnect', props.developerId)
-      socket.off('terminal:history')
-      socket.off('terminal:data')
-      socket.off('terminal:error')
+    if (socket.value) {
+      socket.value.emit('terminal:disconnect', props.developerId)
+      socket.value.off('terminal:history')
+      socket.value.off('terminal:data')
+      socket.value.off('terminal:error')
     }
     if (terminal) {
       terminal.dispose()
@@ -159,19 +166,27 @@ onUnmounted(() => {
   }
 })
 
+// Watch for socket to become available and connect
+watch(socket, (newSocket) => {
+  if (newSocket && terminal) {
+    console.log('🔌 Terminal: Setting up socket connection for developer', props.developerId)
+    setupSocketConnection(newSocket)
+  }
+}, { immediate: true })
+
 // Watch for developerId changes and reconnect terminal
 watch(() => props.developerId, (newDeveloperId, oldDeveloperId) => {
-  if (newDeveloperId !== oldDeveloperId && terminal && socket) {
+  if (newDeveloperId !== oldDeveloperId && terminal && socket.value) {
     // Disconnect from old developer
     if (oldDeveloperId) {
-      socket.emit('terminal:disconnect', oldDeveloperId)
+      socket.value.emit('terminal:disconnect', oldDeveloperId)
     }
     
     // Clear terminal display
     terminal.clear()
     
     // Connect to new developer
-    socket.emit('terminal:connect', newDeveloperId)
+    socket.value.emit('terminal:connect', newDeveloperId)
   }
 })
 </script>
