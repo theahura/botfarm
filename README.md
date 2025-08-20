@@ -155,6 +155,10 @@ If port 3001 is already in use, set the PORT environment variable:
 PORT=3002 botfarm
 ```
 
+## Author
+
+theahura
+
 ## License
 
 MIT License
