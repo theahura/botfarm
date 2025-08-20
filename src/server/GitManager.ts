@@ -130,7 +130,7 @@ export class GitManager {
       
       // Merge the PR
       console.log(`🔧 GitManager: Merging PR ${prNumber}`);
-      await execAsync(`gh pr merge ${prNumber} --merge`, {
+      await execAsync(`gh pr merge ${prNumber} --squash`, {
         cwd: this.baseDirectory
       });
       

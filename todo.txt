@@ -4,6 +4,7 @@ Because each sub-version is running in its own git worktree, need to figure out 
 
 Alert should show up in the tab
 
+Git switch to squash commits
 Git autocreate commit message
 Git comments
 
