@@ -3,8 +3,6 @@ import { Server } from 'socket.io';
 import { Notification, SocketEvents } from '../shared/types';
 
 export class NotificationManager {
-  private notifications: Map<string, Notification> = new Map();
-
   constructor(private io: Server) {}
 
   createNotification(
@@ -21,50 +19,9 @@ export class NotificationManager {
       read: false
     };
 
-    this.notifications.set(notification.id, notification);
+    // Fire and forget - just emit to clients
     this.io.emit('notification:new', notification);
     
     return notification;
-  }
-
-  markAsRead(notificationId: string): void {
-    const notification = this.notifications.get(notificationId);
-    if (notification) {
-      notification.read = true;
-      this.notifications.set(notificationId, notification);
-      this.io.emit('notification:read', notificationId);
-    }
-  }
-
-  markAllAsRead(): void {
-    for (const notification of this.notifications.values()) {
-      if (!notification.read) {
-        notification.read = true;
-        this.io.emit('notification:read', notification.id);
-      }
-    }
-  }
-
-  getAllNotifications(): Notification[] {
-    return Array.from(this.notifications.values())
-      .sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime());
-  }
-
-  getUnreadNotifications(): Notification[] {
-    return this.getAllNotifications().filter(n => !n.read);
-  }
-
-  getNotificationsForDeveloper(developerId: string): Notification[] {
-    return this.getAllNotifications().filter(n => n.developerId === developerId);
-  }
-
-  clearNotificationsForDeveloper(developerId: string): void {
-    const toDelete: string[] = [];
-    for (const [id, notification] of this.notifications) {
-      if (notification.developerId === developerId) {
-        toDelete.push(id);
-      }
-    }
-    toDelete.forEach(id => this.notifications.delete(id));
   }
 }

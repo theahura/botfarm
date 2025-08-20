@@ -105,24 +105,25 @@ const formatTime = (timestamp: Date) => {
   return new Date(timestamp).toLocaleTimeString()
 }
 
-const handleBellClick = async () => {
+const handleBellClick = () => {
   showNotifications.value = !showNotifications.value
   if (unreadNotifications.value > 0) {
-    await api.markAllNotificationsAsRead()
+    // Immediately mark all notifications as read locally
+    notifications.value.forEach(n => n.read = true)
   }
 }
 
-const handleNotificationClick = async (notification: Notification) => {
+const handleNotificationClick = (notification: Notification) => {
   if (!notification.read) {
-    await api.markNotificationAsRead(notification.id)
+    notification.read = true
   }
   router.push(`/chat/${notification.developerId}`)
   showNotifications.value = false
 }
 
-const handleToastClick = async (toast: Notification) => {
+const handleToastClick = (toast: Notification) => {
   dismissToast(toast.id)
-  await handleNotificationClick(toast)
+  handleNotificationClick(toast)
 }
 
 const dismissToast = (toastId: string) => {
@@ -160,14 +161,6 @@ const setupSocketListeners = (socketInstance: any) => {
     showToast(notification)
   })
 
-  socketInstance.on('notification:read', (notificationId: string) => {
-    console.log('📥 Received notification:read event:', notificationId)
-    const notification = notifications.value.find(n => n.id === notificationId)
-    if (notification) {
-      notification.read = true
-    }
-  })
-
   socketInstance.on('developer:created', (developer: Developer) => {
     console.log('📥 Received developer:created event:', developer)
     developers.value.push(developer)
@@ -189,7 +182,6 @@ const setupSocketListeners = (socketInstance: any) => {
 
 onMounted(async () => {
   try {
-    notifications.value = await api.getNotifications()
     developers.value = await api.getDevelopers()
   } catch (error) {
     console.error('Failed to load initial data:', error)
