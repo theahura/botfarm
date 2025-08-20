@@ -54,8 +54,15 @@ export class GitManager {
       await execAsync(`git worktree remove "${worktreePath}" --force`, {
         cwd: this.baseDirectory
       });
+      console.log(`✅ GitManager: Successfully removed worktree ${worktreePath}`);
     } catch (error) {
-      console.warn(`Failed to remove worktree ${worktreePath}:`, (error as Error).message);
+      const errorMessage = (error as Error).message;
+      // Check if the worktree is already gone
+      if (errorMessage.includes('not a working tree') || errorMessage.includes('does not exist')) {
+        console.log(`✅ GitManager: Worktree ${worktreePath} was already removed`);
+      } else {
+        console.warn(`⚠️ GitManager: Failed to remove worktree ${worktreePath}:`, errorMessage);
+      }
     }
   }
 
@@ -67,7 +74,13 @@ export class GitManager {
       });
       console.log(`✅ GitManager: Successfully deleted local branch ${branchName}`);
     } catch (error) {
-      console.warn(`Failed to delete branch ${branchName}:`, (error as Error).message);
+      const errorMessage = (error as Error).message;
+      // Check if the branch is already gone
+      if (errorMessage.includes('not found') || errorMessage.includes('does not exist')) {
+        console.log(`✅ GitManager: Branch ${branchName} was already deleted`);
+      } else {
+        console.warn(`⚠️ GitManager: Failed to delete branch ${branchName}:`, errorMessage);
+      }
     }
   }
 
