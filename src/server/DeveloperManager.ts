@@ -10,8 +10,12 @@ export class DeveloperManager {
   private developers: Map<string, Developer> = new Map();
   private terminals: Map<string, pty.IPty> = new Map();
   private terminalHistories: Map<string, string> = new Map();
+  private idleTimers: Map<string, NodeJS.Timeout> = new Map();
+  private idleNotificationSent: Map<string, boolean> = new Map();
   private gitManager: GitManager;
   private notificationManager: NotificationManager;
+  
+  private static readonly IDLE_TIMEOUT_MS = 30 * 1000; // 30 seconds
 
   constructor(private io: Server) {
     this.gitManager = new GitManager();
@@ -105,8 +109,9 @@ export class DeveloperManager {
     });
 
 
-    // Set initial status
+    // Set initial status and start idle tracking
     this.updateDeveloperStatus(developer.id, DeveloperStatus.ACTIVE);
+    this.resetIdleTimer(developer.id);
     console.log(`🔄 Set initial status to ACTIVE for ${developer.name}`);
   }
 
@@ -121,6 +126,7 @@ export class DeveloperManager {
     this.io.to(`terminal:${developerId}`).emit('terminal:data', data);
     
     this.updateLastActivity(developerId);
+    this.resetIdleTimer(developerId);
 
     if (this.isWaitingForInput(data)) {
       console.log(`⏳ Detected waiting for input pattern in: "${data.trim()}"`);
@@ -264,8 +270,9 @@ export class DeveloperManager {
       this.terminals.delete(developerId);
     }
     
-    // Clean up terminal history
+    // Clean up terminal history and idle tracking
     this.terminalHistories.delete(developerId);
+    this.clearIdleTimer(developerId);
 
     const developer = this.developers.get(developerId);
     if (developer) {
@@ -299,6 +306,8 @@ export class DeveloperManager {
     }
 
     terminal.write(data);
+    this.updateLastActivity(developerId);
+    this.resetIdleTimer(developerId);
   }
 
   async discoverExistingDevelopers(): Promise<void> {
@@ -356,8 +365,9 @@ export class DeveloperManager {
     // Start the Claude terminal for this developer
     this.startClaudeTerminal(developer);
     
-    // Update status to active
+    // Update status to active and start idle tracking
     this.updateDeveloperStatus(developerId, DeveloperStatus.ACTIVE);
+    this.resetIdleTimer(developerId);
     
     console.log(`✅ DeveloperManager: Developer ${developer.name} activated successfully`);
     return developer;
@@ -395,5 +405,56 @@ export class DeveloperManager {
     } catch {
       throw new Error('Claude CLI not found in PATH. Please ensure Claude is installed and available.');
     }
+  }
+
+  private resetIdleTimer(developerId: string) {
+    // Clear existing timer if it exists
+    this.clearIdleTimer(developerId);
+    
+    // Reset idle notification flag
+    this.idleNotificationSent.set(developerId, false);
+    
+    // Set new timer
+    const timer = setTimeout(() => {
+      this.handleIdleTimeout(developerId);
+    }, DeveloperManager.IDLE_TIMEOUT_MS);
+    
+    this.idleTimers.set(developerId, timer);
+    console.log(`⏱️ Set idle timer for developer ${developerId} (${DeveloperManager.IDLE_TIMEOUT_MS}ms)`);
+  }
+
+  private clearIdleTimer(developerId: string) {
+    const existingTimer = this.idleTimers.get(developerId);
+    if (existingTimer) {
+      clearTimeout(existingTimer);
+      this.idleTimers.delete(developerId);
+      console.log(`⏱️ Cleared idle timer for developer ${developerId}`);
+    }
+    this.idleNotificationSent.delete(developerId);
+  }
+
+  private handleIdleTimeout(developerId: string) {
+    const developer = this.developers.get(developerId);
+    if (!developer) {
+      console.log(`⏰ Idle timeout triggered for non-existent developer ${developerId}`);
+      return;
+    }
+
+    // Only send notification if we haven't already sent one
+    const alreadyNotified = this.idleNotificationSent.get(developerId);
+    if (!alreadyNotified) {
+      console.log(`💤 Developer ${developer.name} (${developerId}) has been idle for ${DeveloperManager.IDLE_TIMEOUT_MS / 1000} seconds`);
+      
+      this.notificationManager.createNotification(
+        developerId,
+        'idle',
+        `${developer.name} has been idle for ${DeveloperManager.IDLE_TIMEOUT_MS / 1000} seconds with no activity`
+      );
+      
+      this.idleNotificationSent.set(developerId, true);
+    }
+    
+    // Clear the timer since we've handled the timeout
+    this.idleTimers.delete(developerId);
   }
 }
