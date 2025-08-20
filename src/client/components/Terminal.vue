@@ -3,14 +3,11 @@
     <div class="terminal-header">
       <h3>Claude Terminal - {{ developerName }}</h3>
       <div class="terminal-controls">
-        <button @click="clearTerminal" class="btn-clear">Clear</button>
-        <button @click="toggleTerminal" class="btn-toggle">
-          {{ isVisible ? 'Hide' : 'Show' }} Terminal
-        </button>
+        <button @click="resetTerminal" class="btn-reset">Reset Terminal</button>
       </div>
     </div>
     
-    <div v-show="isVisible" class="terminal-wrapper">
+    <div class="terminal-wrapper">
       <div ref="terminalElement" class="terminal"></div>
     </div>
   </div>
@@ -31,7 +28,6 @@ const props = defineProps<Props>()
 
 const { socket } = useSocket()
 const terminalElement = ref<HTMLElement>()
-const isVisible = ref(true)
 
 let terminal: Terminal | null = null
 let fitAddon: FitAddon | null = null
@@ -135,20 +131,15 @@ const initializeTerminal = () => {
   }
 }
 
-const clearTerminal = () => {
-  if (terminal) {
-    terminal.clear()
-  }
-}
-
-const toggleTerminal = () => {
-  isVisible.value = !isVisible.value
-  if (isVisible.value) {
-    nextTick(() => {
-      if (fitAddon) {
-        fitAddon.fit()
-      }
-    })
+const resetTerminal = () => {
+  if (socket.value) {
+    console.log('🔄 Requesting terminal reset for developer', props.developerId)
+    socket.value.emit('terminal:reset', props.developerId)
+    
+    // Clear the current terminal display immediately for better UX
+    if (terminal) {
+      terminal.clear()
+    }
   }
 }
 
@@ -224,9 +215,8 @@ watch(() => props.developerId, (newDeveloperId, oldDeveloperId) => {
   gap: 0.5rem;
 }
 
-.btn-clear,
-.btn-toggle {
-  background: #6c757d;
+.btn-reset {
+  background: #dc3545;
   color: white;
   border: none;
   padding: 0.5rem 1rem;
@@ -236,9 +226,8 @@ watch(() => props.developerId, (newDeveloperId, oldDeveloperId) => {
   transition: background-color 0.2s;
 }
 
-.btn-clear:hover,
-.btn-toggle:hover {
-  background: #5a6268;
+.btn-reset:hover {
+  background: #c82333;
 }
 
 .terminal-wrapper {
