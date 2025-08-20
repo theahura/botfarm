@@ -59,6 +59,18 @@ export class GitManager {
     }
   }
 
+  async deleteBranch(branchName: string): Promise<void> {
+    try {
+      console.log(`🔧 GitManager: Deleting local branch ${branchName}`);
+      await execAsync(`git branch -D "${branchName}"`, {
+        cwd: this.baseDirectory
+      });
+      console.log(`✅ GitManager: Successfully deleted local branch ${branchName}`);
+    } catch (error) {
+      console.warn(`Failed to delete branch ${branchName}:`, (error as Error).message);
+    }
+  }
+
   async commitAndCreatePR(worktreePath: string, branchName: string, message: string): Promise<string> {
     try {
       await execAsync('git add .', { cwd: worktreePath });

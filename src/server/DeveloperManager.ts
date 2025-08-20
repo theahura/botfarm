@@ -277,6 +277,7 @@ export class DeveloperManager {
     const developer = this.developers.get(developerId);
     if (developer) {
       await this.gitManager.removeWorktree(developer.workingDirectory);
+      await this.gitManager.deleteBranch(developer.branchName);
       this.notificationManager.clearNotificationsForDeveloper(developerId);
       this.developers.delete(developerId);
       this.io.emit('developer:deleted', developerId);
